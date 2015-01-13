@@ -30,6 +30,8 @@
 
 # backupfiles
 *~
+*.swp
+*.swo
 
 # output files(cscope)
 *.out

@@ -29,5 +29,6 @@ string   ::= <chracter>+
 note that '[]' and '[^]' are non-standard. '[]' matches white spaces and '[^]'
 matches everything but white spaces.
 
-And I would start with the input procedure which converts the input string
+1. [X] I would start with the input procedure which converts the input string
 into a tokens.
+2. [ ] Basic Parser routines.

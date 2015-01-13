@@ -4,20 +4,20 @@
 #include <malloc.h>
 #include "nfa.h"
 
+char *rules[] = {
+    "[0-9]+ return TK_NUM;",
+    "[0-9]*\\.[0-9]+",
+    NULL
+};
+
 #define MAXBUF 2048
-char *line = NULL;
+char **line = rules-1;
 
 char *get_expr(void)
 {
-    size_t len;
-    ssize_t read;
-    read = getline(&line, &len, stdin);
-    if (read < 0) {
-        free(line);
-        return NULL;
-    }
-    printf("Line Got: %s", line);
-    return line;
+    line++;
+    printf("---- Line Got: %s ----\n", *line);
+    return *line;
 }
 
 int main(int argc, char *argv[])

@@ -1,11 +1,15 @@
 CC = gcc
 CFLAGS = -Wall
 
+
 COMPONENTS = escape nfa
 LIBS = ${patsubst %,%.o,${COMPONENTS}}
 TESTS = ${patsubst %.c,%,$(wildcard test*.c)}
 
 all: test
+
+debug: CFLAGS += -DDEBUG -g
+debug: test
 
 %.o: %.c
 	${CC} ${CFLAGS} -c $<

@@ -6,6 +6,18 @@
 
 #include "nfa.h"
 #include "escape.h"
+/*---------------------------------------------------------------------------*/
+/* Debug Macros */
+#ifdef DEBUG
+    int Level = 0;
+    #define ENTER(f) printf("%*senter %s [%c][%1.10s] \n", Level++ * 4, \
+                            "", f, Lexeme, Input_pos);
+    #define LEAVE(f) printf("%*sleave %s [%c][%1.10s] \n", --Level * 4, \
+                            "", f, Lexeme, Input_pos);
+#else
+    #define ENTER(f)
+    #define LEAVE(f)
+#endif
 
 /*---------------------------------------------------------------------------*/
 /* Token types */
@@ -189,6 +201,7 @@ nfa_t *thompson(char *(*input_func)(void), int max_state, nfa_t **start_state)
 
 nfa_t *machine()
 {
+    ENTER("machine");
     /* machine  ::= ( rule )* END_OF_INPUT */
     nfa_t *start = NULL;
 
@@ -197,11 +210,13 @@ nfa_t *machine()
         start = rule();
     }
 
+    LEAVE("machine");
     return start;
 }
 
 nfa_t *rule()
 {
+    ENTER("rule");
     /* rule     ::=  expr  EOS action 
                   | ^expr  EOS action
                   |  expr$ EOS action */
@@ -228,10 +243,12 @@ nfa_t *rule()
     printf("action: \"%s\"\n", Input_pos);
 
     advance();  /* skip the EOS token */
+    LEAVE("rule");
 }
 
 void expr(void)
 {
+    ENTER("expr");
     /* expr     ::= cat_expr ( OR cat_expr )*      ; OR has high precedence
      */
     cat_expr();
@@ -240,10 +257,12 @@ void expr(void)
         cat_expr();
         printf("--> expr: doing OR operator\n");
     }
+    LEAVE("expr");
 }
 
 void cat_expr(void)
 {
+    ENTER("cat_expr");
     /* cat_expr ::= (factor)+
      */
     if (first_in_cat(Current_tok)) {
@@ -258,6 +277,7 @@ void cat_expr(void)
         factor();
         printf("--> cat_expr = (factor)+\n");
     }
+    LEAVE("cat_expr");
 }
 
 bool first_in_cat(enum token t)
@@ -281,6 +301,7 @@ bool first_in_cat(enum token t)
 
 void factor(void)
 {
+    ENTER("factor");
     /* factor   ::= term* | term+ | term? | term
      */
     term();
@@ -290,10 +311,12 @@ void factor(void)
     } else {
         printf("--> term\n");
     }
+    LEAVE("factor");
 }
 
 void term(void)
 {
+    ENTER("term");
     /* term     ::= [string] | [^string] | [] | [^] | . | (expr) | <character>
      */
     if (match(PAREN_OPEN)) {
@@ -330,6 +353,7 @@ void term(void)
         }
     }
 
+    LEAVE("term");
 }
 
 void dodash(void)

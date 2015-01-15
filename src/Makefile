@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall
 
 
-COMPONENTS = escape nfa
+COMPONENTS = escape nfa set
 LIBS = ${patsubst %,%.o,${COMPONENTS}}
 TESTS = ${patsubst %.c,%,$(wildcard test*.c)}
 
@@ -20,6 +20,9 @@ ${TESTS}: %: %.o
 
 .PHONY: test
 test: ${TESTS}
+
+.PHONY: run_test
+run_test: ${TESTS}
 	@for exe in ${TESTS}; do \
 	    echo "======== testing $$exe =======";\
 	    ./$$exe ;\

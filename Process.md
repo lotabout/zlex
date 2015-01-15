@@ -1,5 +1,12 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 15 2015
+To represent character classes(CCL), we will need SETs. As we will also need
+SET when converting NFA to DFA, so we will try to implement a general SET
+routine that contains only non-negtive integer states.
+
+- [ ] library SET.
+
 ### Jan 13 2015
 The key point here is to first parse regular expressions into NFA machines. So
 the first part of the develop will be adding NFA support.
@@ -31,4 +38,4 @@ matches everything but white spaces.
 
 1. [X] I would start with the input procedure which converts the input string
 into a tokens.
-2. [ ] Basic Parser routines.
+2. [X] Basic Parser routines.

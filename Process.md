@@ -1,11 +1,20 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 16 2015
+The next step is the memory management of NFA states. According to the text
+book, `malloc` and `free` is inefficient if we will frequently allocate and
+destory objects. Thus we want to allocate a large pool of memory first and
+handle the allocation and destory all by ourselves. This routine should be as
+simple as possible to maximize efficiency.
+
+- [ ] Memory Management of NFA states.
+
 ### Jan 15 2015
 To represent character classes(CCL), we will need SETs. As we will also need
 SET when converting NFA to DFA, so we will try to implement a general SET
 routine that contains only non-negtive integer states.
 
-- [ ] library SET.
+- [X] library SET.
 
 ### Jan 13 2015
 The key point here is to first parse regular expressions into NFA machines. So
@@ -16,7 +25,7 @@ modified a little bit)
 ```
 machine  ::= ( rule )* END_OF_INPUT
 
-rule     ::=  expr  EOS action 
+rule     ::=  expr  EOS action
            | ^expr  EOS action  ; expression anchored at the beginning of line
            |  expr$ EOS action  ; expression anchored at the end of line
 

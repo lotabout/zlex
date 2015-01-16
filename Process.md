@@ -7,7 +7,11 @@ destory objects. Thus we want to allocate a large pool of memory first and
 handle the allocation and destory all by ourselves. This routine should be as
 simple as possible to maximize efficiency.
 
-- [ ] Memory Management of NFA states.
+- [X] Memory Management of NFA states.
+- [X] Memory Management of accept strings.
+
+Next, we should integrate the NFA states to replace the parser stubs.
+- [ ] replace stubs with real NFAs in the parser.
 
 ### Jan 15 2015
 To represent character classes(CCL), we will need SETs. As we will also need

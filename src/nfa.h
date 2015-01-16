@@ -36,4 +36,12 @@ typedef struct nfa
 /*---------------------------------------------------------------------------*/
 nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state);
 
+
+typedef enum {
+    NFA_PLAIN,      /* plain text output */
+    NFA_GRAPHVIZ,   /* graphviz output */
+} nfa_print_t;
+
+void print_nfa(nfa_t *nfa, int max_state, nfa_t *start, nfa_print_t type);
+
 #endif /* end of include guard: NFA_H */

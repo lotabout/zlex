@@ -5,8 +5,8 @@
 #include "nfa.h"
 
 char *rules[] = {
-    "[0-9]+ return TK_NUM;",
-    "[0-9]*\\.[0-9]+",
+    "[0-9]+ return ICON;",
+    "([0-9]+|[0-9]*\\.[0-9]+|[0-9]+\\.[0-9]*)(e[0-9]+)? return FCON",
     NULL
 };
 
@@ -16,12 +16,15 @@ char **line = rules-1;
 char *get_expr(void)
 {
     line++;
-    printf("---- Line Got: %s ----\n", *line);
     return *line;
 }
 
 int main(int argc, char *argv[])
 {
-    thompson(get_expr, 100, NULL);
+    int max_state;
+    nfa_t *start = thompson(get_expr, &max_state, NULL);
+    /*print_nfa(start, max_state, start, NFA_GRAPHVIZ);*/
+    print_nfa(start, max_state, start, NFA_PLAIN);
+
     return 0;
 }

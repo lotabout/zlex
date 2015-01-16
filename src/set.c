@@ -313,12 +313,11 @@ int set_next_member(set_t *set)
         }
     }
 
-    do {
-        current_member++;
+    for (current_member++; current_member < set->nbits; current_member++) {
         if (dobit(set, current_member, '=')) {
             return current_member;
         }
-    } while(current_member < set->nbits);
+    }
 
     return -1;
 }
@@ -351,12 +350,11 @@ int set_next_empty(set_t *set)
         }
     }
 
-    do {
-        current_member++;
+    for (current_member++; current_member < set->nbits; current_member++) {
         if (!dobit(set, current_member, '=')) {
             return current_member;
         }
-    } while(current_member < set->nbits);
+    }
 
     return -1;
 }
@@ -432,7 +430,7 @@ bool set_is_subset(set_t *sub, set_t *set)
         sp++;
     }
 
-    while(len > 0) {
+    while(tail > 0) {
         /* sub is longer, the longer part should be all zero */
         if (*ss++ != 0) {
             return false;
@@ -486,8 +484,9 @@ void set_print(set_t *set)
 
     get_next(NULL);
     int member;
-    while(((member = get_next(set)) != -1)
-          && member < set->nbits) {
+    /*while(((member = get_next(set)) != -1)*/
+          /*&& member < set->nbits) {*/
+    while(((member = get_next(set)) != -1)) {
         if (member_one_line % MAX_MEMBER_LINE == 0) {
             printf("\n->");
             member_one_line = 1;

@@ -94,6 +94,10 @@ void set_clear(set_t *set);
 /* set every bit in the set */
 void set_fill(set_t *set);
 
+/* clear the set and set the set to its original size. 
+ * compare with clear() which clear all the bits without modifying the size */
+void set_truncate(set_t *set);
+
 /* return true if *set* is empty */
 bool set_is_empty(set_t *set);
 

@@ -70,6 +70,7 @@ static bool dobit(set_t *set, int bit, char op)
         default:
             break;
     }
+    return true;
 }
 
 /* perform binary operation in two set depending on *op* */
@@ -117,6 +118,7 @@ static bool set_op(set_t *dst, set_t *src, char op)
         default:
             break;
     }
+    return true;
 }
 
 /* test the relation between two set:
@@ -130,7 +132,7 @@ static bool set_test(set_t *dst, set_t *src)
         /* make sure that len(s) <= len(dst) */
         set_t *tmp = src;
         src = dst;
-        dst = src;
+        dst = tmp;
     }
 
     _SETTYPE *s = src->map;
@@ -248,7 +250,7 @@ bool set_remove_members(set_t *set, int member, ...)
         }
         dobit(set, member, '&');
 
-        va_arg(ap, int);
+        member = va_arg(ap, int);
     }
     va_end(ap);
     return true;
@@ -395,6 +397,19 @@ void set_fill(set_t *set)
     memset(set->map, ~0, set->nwords * sizeof(_SETTYPE));
 }
 
+/* clear the set and set the set to its original size. 
+ * compare with clear() which clear all the bits without modifying the size */
+void set_truncate(set_t *set)
+{
+    if (set->map != set->defmap) {
+        free(set->map);
+    }
+    set->nwords = _DEFWORDS;
+    set->nbits  =  _DEFWORDS * _BITS_IN_WORD;
+    set->map = set->defmap;
+    memset(set->defmap, 0, set->nwords * sizeof(_SETTYPE));
+}
+
 /* return true if *set* is empty */
 bool set_is_empty(set_t *set)
 {
@@ -415,7 +430,8 @@ bool set_is_subset(set_t *sub, set_t *set)
 {
     assert(sub != NULL && set != NULL);
 
-    size_t tail = sub->nwords - set->nwords; /* size(src) > size(dst) */
+    int tail = sub->nwords - set->nwords; /* size(src) > size(dst), could be
+                                             negtive*/
     size_t len = set->nwords > sub->nwords ? sub->nwords : set->nwords;
 
     _SETTYPE *ss = sub->map;
@@ -469,26 +485,24 @@ void set_print(set_t *set)
     /* if the set is too full, print the missing ones, else print the existing
      * ones */
     int member_one_line = 0;
-    const int MAX_MEMBER_LINE = 10;
+    const int MAX_MEMBER_LINE = 20;
 
     int elements = set_elements(set);
     int (*get_next)(set_t *);
 
     if (elements*2 < set->nbits) {
         get_next = set_next_member;
-        printf("set[%d/%d]: ", elements, set->nbits);
+        printf("set[%d/%lu]: ", elements, set->nbits);
     } else {
         get_next = set_next_empty;
-        printf("set[%d/%d]: All except: ", elements, set->nbits);
+        printf("set[%d/%ld]: All except: ", elements, set->nbits);
     }
 
     get_next(NULL);
     int member;
-    /*while(((member = get_next(set)) != -1)*/
-          /*&& member < set->nbits) {*/
     while(((member = get_next(set)) != -1)) {
         if (member_one_line % MAX_MEMBER_LINE == 0) {
-            printf("\n->");
+            printf("\n-> ");
             member_one_line = 1;
         }
         printf("%d ", member);

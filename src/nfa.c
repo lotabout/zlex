@@ -448,6 +448,37 @@ static void discard_state(nfa_t *state)
 /* Just like what we do to NFA states, we'll save accepting strings in a large
  * pool of memory, also, we'll embed the line number of *str* into the saved
  * string, so that ((int*)(p->accept))[-1] is the line number. */
+const int MAX_SAVED_STRING = (10 * 1024);
 static char *save(char *str)
 {
+    assert(str != NULL);
+
+    static bool first_time = true;
+    static int *strings = NULL;
+    static int *savep = NULL; /* current position in string pool */
+
+    if (first_time) {
+        /* allocate the string pool */
+        savep = strings = (int *)malloc(MAX_SAVED_STRING);
+        if (strings == NULL) {
+            fprintf(stderr, "save: not enough memory allocating string pool\n");
+            exit(1);
+        }
+        first_time = false;
+    }
+
+    *savep++ = 0;   /* save the line number, TODO: involve the actual line
+                       number */
+
+    int len = strlen(str);
+    if ((char*)savep+len+1 >= (char*)strings+MAX_SAVED_STRING) {
+        fprintf(stderr, "save: max size of pool exceeded.\n");
+        exit(1);
+    }
+    strcpy((char*)savep, str);
+    char *rval = (char*)savep;
+    len += 2;  /* count for the ending '\0' of *str* and move past it */
+    savep += (len/sizeof(int)) + ((len % sizeof(int) == 0 ? 0 : 1));
+
+    return rval;
 }

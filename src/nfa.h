@@ -5,6 +5,7 @@
  *---------------------------------------------------------------------------*/
 #include "set.h"
 
+/*---------------------------------------------------------------------------*/
 /* anchor of regular expression */
 typedef enum {
     NONE = 0,
@@ -28,11 +29,11 @@ typedef struct nfa
     anchor_t anchor;    /* anchor of regular expression */
 } nfa_t;
 
-#define EPSiLON -1
+#define EPSILON -1
 #define CCL -2
 #define EMPTY -3
 
 /*---------------------------------------------------------------------------*/
-nfa_t *thompson(char *(*input_func)(void), int max_state, nfa_t **start_state);
+nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state);
 
 #endif /* end of include guard: NFA_H */

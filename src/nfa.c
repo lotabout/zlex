@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "nfa.h"
 #include "escape.h"
@@ -21,7 +22,7 @@
 
 /*---------------------------------------------------------------------------*/
 /* Token types */
-enum token { 
+enum token {
     EOS = 1,     /* end of string      */
     ANY,         /* .                  */
     AT_BOL,      /* ^                  */
@@ -184,14 +185,14 @@ static inline bool match(enum token t)
 }
 
 /*---------------------------------------------------------------------------*/
-/* NFA parser 
+/* NFA parser
  * A simple recursive top-down parser that creates a Thompson NFA for a
  * regular expression.
  *
  * Now only stubs.
  * */
 
-nfa_t *thompson(char *(*input_func)(void), int max_state, nfa_t **start_state)
+nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state)
 {
     Input_func = input_func;
     Current_tok = EOS;  /* load the first token */
@@ -217,7 +218,7 @@ nfa_t *machine()
 nfa_t *rule()
 {
     ENTER("rule");
-    /* rule     ::=  expr  EOS action 
+    /* rule     ::=  expr  EOS action
                   | ^expr  EOS action
                   |  expr$ EOS action */
     if (match(AT_BOL)) {
@@ -358,7 +359,7 @@ void term(void)
 
 void dodash(void)
 {
-    /* match the string compnent in [string] or [^string] 
+    /* match the string compnent in [string] or [^string]
      * note that a-z are interpret as abcd...z etc. */
     int first = 0;
     while(!match(CCL_END)) {
@@ -373,3 +374,80 @@ void dodash(void)
     }
 }
 
+/*---------------------------------------------------------------------------*/
+/* Memory management -- state and strings
+ * states: allocate a large pool and manage allocations and destruction
+ * strings: routine save() to allocate strings and embed line number in it. */
+
+const int MAX_NFA_STATES = 788;     /* max states in a NFA machine */
+nfa_t *NFA_states; /* pointer to the allocated pool of states */
+int Num_states = 0;     /* number of states in NFA machine */
+int Next_alloc = 0;     /* Index of next elements in the array */
+
+
+#define SSIZE 32                /* stack size */
+nfa_t *Sstack[SSIZE];           /* stack to save discarded pointer */
+nfa_t **Sp = &Sstack[-1];       /* stack pointer */
+
+#define PUSH(x) (*++Sp = (x))   /* push x onto the stack */
+#define POP()   (*Sp--)         /* get x from the top of the stack */
+#define STACK_EMPTY() (Sp < Sstack)     /* true if stack is empty */
+#define STACK_FULL()  ((Sp-Sstack+1) >= SSIZE) /* true if stack is full */
+
+/* Allocate new NFA state */
+static nfa_t *new_state(void)
+{
+    static bool first_time = true;
+    if (first_time) {
+        NFA_states = (nfa_t *)calloc(MAX_NFA_STATES, sizeof(*NFA_states));
+        if (NFA_states == NULL) {
+            fprintf(stderr, "new_state: not enough memroy.\n");
+            exit(1);
+        }
+        first_time = false;
+        Sp = &Sstack[-1];
+    }
+
+    if (++Num_states >= MAX_NFA_STATES) {
+        fprintf(stderr, "new_state: MAX NFA states reached.\n");
+        exit(1);
+    }
+
+    nfa_t *rval;
+    rval = !STACK_EMPTY() ? POP() : &NFA_states[Next_alloc++];
+    rval->edge = EPSILON;
+
+    return rval;
+}
+
+/* discard a NFA state */
+static void discard_state(nfa_t *state)
+{
+    /* note that the state might contain a bitset, we'll free it before push
+     * it to the stack
+     * also, *state* might contain accept strings, they are saved in the pool
+     * allocated by save(), if we discard an accepting state, the
+     * corresponding part in the pool will leak(no way to fetch any more),
+     * though we normally do not discard an accepting state */
+    assert(state != NULL);
+
+    if (state->bitset != NULL) {
+        set_del(state->bitset);
+        state->bitset = NULL;
+    }
+    memset(state, 0, sizeof(*state));
+    state->edge = EMPTY;
+    if (STACK_FULL()) {
+        fprintf(stderr, "discard_state: stack full, abort.\n");
+        exit(1);
+    }
+    PUSH(state);
+}
+
+/*---------------------------------------------------------------------------*/
+/* Just like what we do to NFA states, we'll save accepting strings in a large
+ * pool of memory, also, we'll embed the line number of *str* into the saved
+ * string, so that ((int*)(p->accept))[-1] is the line number. */
+static char *save(char *str)
+{
+}

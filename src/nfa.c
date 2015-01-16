@@ -51,13 +51,17 @@ static inline bool match(enum token t);
 /* parser */
 nfa_t *machine();
 nfa_t *rule();
-void expr(void);
-void cat_expr(void);
-void factor(void);
+void expr(nfa_t **start, nfa_t **end);
+void cat_expr(nfa_t **start, nfa_t **end);
+void factor(nfa_t **start, nfa_t **end);
 bool first_in_cat(enum token t);
-void term(void);
-void dodash(void);
+void term(nfa_t **start, nfa_t **end);
+void dodash(set_t *set);
 
+/* memory management */
+static nfa_t *new_state(void);
+static void discard_state(nfa_t *state);
+static char *save(char *str);
 
 /*---------------------------------------------------------------------------*/
 /* token map: characters -> tokens
@@ -203,33 +207,65 @@ nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state)
 nfa_t *machine()
 {
     ENTER("machine");
-    /* machine  ::= ( rule )* END_OF_INPUT */
+    /* machine  ::= ( rule )+ END_OF_INPUT 
+     * A machine should have at least one rule. */
     nfa_t *start = NULL;
+    nfa_t *p = NULL;
+
+    p = start = new_state(); /* remember that new state's edge is EPSILON */
+    p->next1 = rule();
 
     while(!match(END_OF_INPUT)) {
-        printf("machine: match rule.\n");
-        start = rule();
+        /* a machine is a OR of several rules */
+        printf("MACHINE: match a rule.\n");
+        p->next2 = new_state();
+        p = p->next2;
+        p->next1 = rule();
     }
 
     LEAVE("machine");
     return start;
 }
 
-nfa_t *rule()
+nfa_t *rule(void)
 {
     ENTER("rule");
     /* rule     ::=  expr  EOS action
                   | ^expr  EOS action
                   |  expr$ EOS action */
+    nfa_t *start = NULL;
+    nfa_t *end = NULL;
+    anchor_t anchor = NONE;
+
     if (match(AT_BOL)) {
-        printf("--> match at the beginning of line\n");
+        printf("--> RULE: match at the beginning of line\n");
+
+        start = new_state();
+        start->edge = '\n';
+        anchor = START;
         advance();
+        expr(&start->next1, &end);
+    } else {
+        expr(&start, &end);
     }
-    expr();
 
     if (match(AT_EOL)) {
-        printf("--> match at the end of line\n");
+        /* pattern followed by a \r or \n, use a character class */
+        printf("--> RULE: match at the end of line\n");
         advance();
+
+        end->next1 = new_state();
+        end->edge = CCL;
+        end->bitset = set_new();
+        if (end->bitset == NULL) {
+            fprintf(stderr, "rule(): not enough memory allocating character class\n");
+            exit(1);
+        }
+        set_add(end->bitset, '\n');
+
+        /* TODO: if not in *NIX, add '\r' as well */
+        end = end->next1;
+        anchor |= END;
     }
 
     if (!match(EOS)) {
@@ -242,41 +278,79 @@ nfa_t *rule()
     }
 
     printf("action: \"%s\"\n", Input_pos);
+    end->accept = save(Input_pos);
+    end->anchor = anchor;
 
     advance();  /* skip the EOS token */
     LEAVE("rule");
 }
 
-void expr(void)
+void expr(nfa_t **start, nfa_t **end)
 {
     ENTER("expr");
     /* expr     ::= cat_expr ( OR cat_expr )*      ; OR has high precedence
      */
-    cat_expr();
+
+    nfa_t *e2_start = NULL;    /* save state of the (OR cat_expr) part */
+    nfa_t *e2_end = NULL;
+    nfa_t *p = NULL;
+
+    cat_expr(start, end);
+
     while(match(OR)) {
         advance();
-        cat_expr();
-        printf("--> expr: doing OR operator\n");
+        cat_expr(&e2_start, &e2_end);
+
+        /* branch for the start states */
+        p = new_state();
+        p->next1 = *start;
+        p->next2 = e2_start;
+
+        *start = p;
+
+        /* merge the end states */
+        p = new_state();
+        (*end)->next1 = p;
+        e2_end->next1 = p;
+        *end = p;
+
+        printf("--> EXPR: doing OR operator\n");
     }
     LEAVE("expr");
 }
 
-void cat_expr(void)
+void cat_expr(nfa_t **start, nfa_t **end)
 {
     ENTER("cat_expr");
     /* cat_expr ::= (factor)+
+     *          CAT
+     * o --> o  ===>   o --> o
+     * becomes
+     * o --> o --> o
+     *
+     * i.e. discard e2_start while concatenating.
+     * must have at least one factor.
      */
+    nfa_t *e2_start = NULL;
+    nfa_t *e2_end = NULL;
+
     if (first_in_cat(Current_tok)) {
-        factor();
-        printf("--> cat_expr = (factor)+\n");
+        factor(start, end);
+        printf("--> CAT_EXPR = (factor)+\n");
     } else {
-        fprintf(stderr, "cat_expr: expecting a factor.\n");
+        fprintf(stderr, "CAT_EXPR: expecting a factor.\n");
         exit(1);
     }
 
     while(first_in_cat(Current_tok)) {
-        factor();
-        printf("--> cat_expr = (factor)+\n");
+        factor(&e2_start, &e2_end);
+
+        memcpy(*end, e2_start, sizeof(*e2_start));
+        discard_state(e2_start);
+
+        *end = e2_end;
+
+        printf("--> CAT_EXPR = (factor)+\n");
     }
     LEAVE("cat_expr");
 }
@@ -300,28 +374,51 @@ bool first_in_cat(enum token t)
     return false;
 }
 
-void factor(void)
+void factor(nfa_t **start, nfa_t **end)
 {
     ENTER("factor");
     /* factor   ::= term* | term+ | term? | term
+     *        +---------+
+     * o -->  |o  -->  o| --> o
+     *        +---------+
+     * `-new_s `-start `-end  `-new_end
      */
-    term();
+    nfa_t *new_start = NULL;
+    nfa_t *new_end = NULL;
+
+    term(start, end);
     if (match(CLOSURE) || match(PLUS_CLOSE) || match(OPTIONAL)) {
-        printf("--> term* || term+ || term? \n");
+        new_start = new_state();
+        new_end = new_state();
+        new_start->next1 = *start;
+        (*end)->next1 = new_end;
+
+        if (match(CLOSURE) || match(OPTIONAL)) {
+            new_start->next2 = new_end;
+        }
+        if (match(OPTIONAL) || match(PLUS_CLOSE)) {
+            (*end)->next2 = *start;
+        }
+
+        *start = new_start;
+        *end = new_end;
         advance();
+
+        printf("--> FACTOR = term* || term+ || term? \n");
     } else {
-        printf("--> term\n");
+        printf("--> FACTOR = term\n");
     }
     LEAVE("factor");
 }
 
-void term(void)
+void term(nfa_t **start, nfa_t **end)
 {
     ENTER("term");
     /* term     ::= [string] | [^string] | [] | [^] | . | (expr) | <character>
      */
     if (match(PAREN_OPEN)) {
-        expr();
+        advance();
+        expr(start, end);
         if (match(PAREN_CLOSE)) {
             advance();
         } else {
@@ -330,26 +427,53 @@ void term(void)
         }
     } else {
         /* match [string] [^string] */
+        nfa_t *new_start = NULL;
+        *start = new_start = new_state();
+        *end = (*start)->next1 = new_state();
+
         if (match(CCL_START)) {
             advance();
+
+            new_start->edge = CCL;
+            new_start->bitset = set_new();
+            if (new_start->bitset == NULL) {
+                fprintf(stderr, "term: not enough memory allocating bitset.\n");
+                exit(1);
+            }
+
+            bool negtive = false;
             if (match(AT_BOL)) {
-                printf("negtive character class\n");
+                negtive = true;
                 advance();
             }
 
             /* match strings */
-            dodash();
+            dodash(new_start->bitset);
             if (match(CCL_END)) {
                 advance();
             } else {
                 fprintf(stderr, "term: ] not matched.\n");
             }
 
+            if (negtive) {
+                set_invert(new_start->bitset);
+            }
+
         } else if (match(ANY)) {
-            printf("match any character\n");
+            new_start->edge = CCL;
+            new_start->edge = CCL;
+            new_start->bitset = set_new();
+            if (new_start->bitset == NULL) {
+                fprintf(stderr, "term: not enough memory allocating bitset.\n");
+                exit(1);
+            }
+
+            set_add(new_start->bitset, '\n');
+            /* TODO: if not in UNIX, add '\r' as well */
+            set_invert(new_start->bitset);
             advance();
         } else {
-            printf("match character: %c\n", Lexeme);
+            new_start->edge = Lexeme;
             advance();
         }
     }
@@ -357,18 +481,30 @@ void term(void)
     LEAVE("term");
 }
 
-void dodash(void)
+void dodash(set_t *set)
 {
     /* match the string compnent in [string] or [^string]
      * note that a-z are interpret as abcd...z etc. */
     int first = 0;
+
+    if (match(DASH)) { /* treat [-...] as literal '-' */
+        set_add(set, '-');
+        advance();
+    }
+
     while(!match(CCL_END)) {
         if (match(DASH)) {
             advance();
-            printf("matching range: %c-%c\n", first, Lexeme);
+            if (match(CCL_END)) { /* treat [...-] as literal '-' */
+                set_add(set, '-');
+            } else {
+                for (; first <= Lexeme; first++) {
+                    set_add(set, first);
+                }
+            }
         } else {
             first = Lexeme;
-            printf("matching character %c\n", Lexeme);
+            set_add(set, first);
         }
         advance();
     }

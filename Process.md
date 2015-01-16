@@ -11,7 +11,11 @@ simple as possible to maximize efficiency.
 - [X] Memory Management of accept strings.
 
 Next, we should integrate the NFA states to replace the parser stubs.
-- [ ] replace stubs with real NFAs in the parser.
+- [X] replace stubs with real NFAs in the parser.
+
+Now we can actually generate NFA machine, it is time to add routine to test
+the machine, For now we want to add a routine to print out the NFA.
+- [ ] printnfa routine.
 
 ### Jan 15 2015
 To represent character classes(CCL), we will need SETs. As we will also need

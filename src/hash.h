@@ -35,9 +35,16 @@ void *hash_get(hash_t *table, void *key);
 /* delete (key, val) from hash table, val is returned. */
 void *hash_delete(hash_t *table, const void *key);
 
+/* get the number of elements in the hash table, normally for debug usage */
+int hash_elements(hash_t *table);
+
 /* print a hash table */
 void hash_print(hash_t *table, void (*print)(const void *key, const void *val));
 
 
+/*---------------------------------------------------------------------------*/
+/* Hash functions */
+unsigned hash_djb2(const char *p);
+unsigned hash_sdbm(const char *p);
 
 #endif /* end of include guard: HASH_H */

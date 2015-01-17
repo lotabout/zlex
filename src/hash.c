@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include "hash.h"
 
+/*---------------------------------------------------------------------------*/
+/* hash table implementations */
+
 struct hash_table_{
      struct link{
           struct link *next;
@@ -111,19 +114,29 @@ void *hash_delete(hash_t *table, const void *key)
     unsigned hash_val = table->hash(key) % table->size;
 
     struct link *p = table->buckets[hash_val];
+    struct link **prev = &table->buckets[hash_val];
     void *rval = NULL;
     for (; p; p = p->next) {
         if (table->cmp(key, p->key) == 0) {
             rval = p->val;
             break;
         }
+        prev = &p->next;
     }
 
     if (p) {
+        *prev = p->next;
         free(p);
+        table->elements--;
     }
 
     return rval;
+}
+
+/* get the number of elements in the hash table, normally for debug usage */
+int hash_elements(hash_t *table)
+{
+    return table->elements;
 }
 
 /* print a hash table */
@@ -141,6 +154,32 @@ void hash_print(hash_t *table, void (*print)(const void *key, const void *val))
         for (; p; p = p->next) {
             printf("--> ");
             print(p->key, p->val);
+            printf("\n");
         }
     }
+}
+
+/*---------------------------------------------------------------------------*/
+/* Hash functions for strings
+ * check: http://www.cse.yorku.ca/~oz/hash.html */
+unsigned hash_djb2(const char *p)
+{
+    unsigned hash_val = 5381;
+    while (*p) {
+        hash_val = ((hash_val << 5) + hash_val) + *p; /* hash_val * 33 + c */
+        hash_val %= UINT_MAX;
+        p++;
+    }
+    return hash_val;
+}
+
+unsigned hash_sdbm(const char *p)
+{
+    unsigned hash_val = 0;
+    while (*p) {
+        hash_val = *p + (hash_val << 6) + (hash_val << 16) - hash_val;
+        hash_val %= UINT_MAX;
+        p++;
+    }
+    return hash_val;
 }

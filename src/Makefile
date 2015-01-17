@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall
 
 
-COMPONENTS = escape nfa set printnfa
+COMPONENTS = escape nfa set printnfa hash
 LIBS = ${patsubst %,%.o,${COMPONENTS}}
 TESTS = ${patsubst %.c,%,$(wildcard test*.c)}
 
@@ -13,7 +13,7 @@ debug: test
 
 %.o: %.c
 	${CC} ${CFLAGS} -c $<
-	
+
 ${TESTS}: ${LIBS}
 ${TESTS}: %: %.o
 	${CC} ${CFLAGS} -o $@ $^

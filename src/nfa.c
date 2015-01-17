@@ -610,4 +610,3 @@ void dodash(set_t *set)
         advance();
     }
 }
-

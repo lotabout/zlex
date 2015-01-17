@@ -9,6 +9,17 @@ fast as possible.
 
 - [ ] library: hash table.
 
+Now I am having trouble deciding the APIs for hash table, mainly
+because of two reasons:
+1. The APIs of book _Compiler Design in C_ is too specific, made
+   assumption about the structure of the items is the hash
+   table. Which embeds value into keys.
+2. If we made the hash table general enough, the user of hash table
+   would have to do memory management all by themselves. Because the
+   items in hash table should be `void *`.
+
+Finally decided to choose plan 2.
+
 ### Jan 16 2015
 The next step is the memory management of NFA states. According to the text
 book, `malloc` and `free` is inefficient if we will frequently allocate and

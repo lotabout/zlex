@@ -1,5 +1,14 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 17 2015
+Now the basic NFA processing routine is done. The next step would be adding
+macro support. Note that the macros are added by zlex in preprocessing phase,
+similar to constructing symbol table in lexical analyzer in normal compilers.
+We will need a new libary: hash tables, if we want to access the macros as
+fast as possible.
+
+- [ ] library: hash table.
+
 ### Jan 16 2015
 The next step is the memory management of NFA states. According to the text
 book, `malloc` and `free` is inefficient if we will frequently allocate and
@@ -15,7 +24,7 @@ Next, we should integrate the NFA states to replace the parser stubs.
 
 Now we can actually generate NFA machine, it is time to add routine to test
 the machine, For now we want to add a routine to print out the NFA.
-- [ ] printnfa routine.
+- [X] printnfa routine.
 
 ### Jan 15 2015
 To represent character classes(CCL), we will need SETs. As we will also need

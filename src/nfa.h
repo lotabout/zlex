@@ -47,7 +47,7 @@ void print_nfa(nfa_t *nfa, int max_state, nfa_t *start, nfa_print_t type);
 /*---------------------------------------------------------------------------*/
 /* macro support */
 /* parse a macro definition and add it to the table */
-void new_macro(char *def);
+void new_macro(const char *def);
 
 /* print all macros to the stdout */
 void printmacs();

@@ -4,9 +4,15 @@
 #include <malloc.h>
 #include "nfa.h"
 
+char *macros[] = {
+    "DM 0-7",
+    "D [{DM}89]",
+    NULL,
+};
+
 char *rules[] = {
-    "[0-9]+ return ICON;",
-    "([0-9]+|[0-9]*\\.[0-9]+|[0-9]+\\.[0-9]*)(e[0-9]+)? return FCON",
+    "{D}+ return ICON;",
+    "({D}+|{D}*\\.{D}+|{D}+\\.{D}*)(e{D}+)? return FCON",
     NULL
 };
 
@@ -21,10 +27,18 @@ char *get_expr(void)
 
 int main(int argc, char *argv[])
 {
+    /* add macros */
+    char **p = macros;
+    while (*p != NULL) {
+        new_macro(*p);
+        p++;
+    }
+
+
     int max_state;
     nfa_t *start = thompson(get_expr, &max_state, NULL);
-    /*print_nfa(start, max_state, start, NFA_GRAPHVIZ);*/
-    print_nfa(start, max_state, start, NFA_PLAIN);
+    print_nfa(start, max_state, start, NFA_GRAPHVIZ);
+    /* print_nfa(start, max_state, start, NFA_PLAIN); */
 
     return 0;
 }

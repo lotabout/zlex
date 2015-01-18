@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
-
+#include <limits.h>
 
 #include "nfa.h"
 #include "escape.h"
@@ -120,12 +120,17 @@ static char *(*Input_func)() = NULL; /* function to get input string */
  * lexeme in Lexeme if the token is literal character. If the character is
  * escaped, Lexeme holds the actual value. Escaped characters are handled by
  * the "escape" module.
+ *
+ * Macros are support by manage input source in a stack.
  */
+#define INPUT_SOURCE_STACK_SIZE 32
 static int advance()
 {
     /* currently, no macro is support */
     static bool inquote = false;
     bool escaped = false;        /* if the current characer are escaped */
+    static char *stack[INPUT_SOURCE_STACK_SIZE];
+    static char **sp = stack-1;
 
     if (Current_tok == EOS) {  /* Need a new line */
         if (inquote) {
@@ -147,16 +152,34 @@ static int advance()
     }
 
     /* check the end of string '\0' */
+    while (*Input_pos == '\0') {
+        /* try to restore input sources */
+        if (sp >= stack) {
+            Input_pos = *sp--;
+        }
+    }
+
     if (*Input_pos == '\0') {
         Current_tok = EOS;
         Lexeme = '\0';
         goto exit;
     }
 
+    /* check for macro, might be nested */
+    if (!inquote) {
+        while (*Input_pos == '{') {
+            *++sp = Input_pos; /* save current input source, will be
+                                * modified by expand_macro() */
+            Input_pos = expand_macro(sp);
+        }
+    }
+
+
+
     /* recognize tokens */
     if (*Input_pos == '"') {
         /* change the quote state. i.e. if in quote, all characters are
-         * treated as plain characters */
+         * treated as plain literals */
         inquote = ~inquote;
         Input_pos ++;
         if (*Input_pos == '\0') {
@@ -620,6 +643,10 @@ static void dodash(set_t *set)
 
 /*---------------------------------------------------------------------------*/
 /* Macro support
+ *
+ * Macro is a simple replacement of text. thus even nested macros should follow
+ * the construt rule after expansion.
+ * 
  * Note that the memory allocated for macros might not be freed at
  * all, they're destoryed after the program exit.
  * This design works because zlex is always one-run for any input. */
@@ -657,7 +684,7 @@ static void print_a_macro(const void *key, const void *val)
  * If two macros comes in a row, the second one takes precedence.
  * A macro definition has the following form 
  *   name <whitespace> definition [<whitespace>]* */
-void new_macro(char *def)
+void new_macro(const char *def)
 {
     static bool first_time = true;
     if (first_time) {
@@ -671,19 +698,21 @@ void new_macro(char *def)
     }
 
 
-    char *name = NULL;
+    const char *name = NULL;
     /* 1. isolate name with definition */
-    for (name = def; *def && !isspace(def); def++) {
+    for (name = def; *def && !isspace(*def); def++) {
         /* pass */
     }
-    if (*def) {
-        *def++ = '\0';
+
+    if (*def == '\0') {
+        fprintf(stderr, "new_macro, missing definition part for macro");
+        exit(1);
     }
 
-    int name_len = def - name;
+    int name_len = def - name + 1;
 
-    char *text = NULL;
-    char *edef = NULL; /* end of definition part */
+    const char *text = NULL;
+    const char *edef = NULL; /* end of definition part */
 
     /* 2. first skip up whitespaces to the definition body */
     while (isspace(*def)) {
@@ -709,7 +738,6 @@ void new_macro(char *def)
             edef++;
         }
 
-        *edef = '\0';
         def = edef;
     }
 
@@ -723,16 +751,20 @@ void new_macro(char *def)
         exit(1);
     }
 
-    strcpy(name_p, name);
-    strcpy(text_p, text);
+    strncpy(name_p, name, name_len-1);
+    name_p[name_len-1] = '\0';
+    strncpy(text_p, text, text_len-1);
+    text_p[text_len-1] = '\0';
     hash_add(Macros, name_p, text_p);
 }
 
+#define MAX_BUF 8192
 /* scan the input, recogize a macro, expand it and return, modify input
  * accordingly. macros names are recognized as <{name}>. the input pointer is
  * moved past the closing '}' */
 static char *expand_macro(char **input)
 {
+    static char key[MAX_BUF];
     char *end = NULL;
     char *rval = NULL;
     end = strchr(++(*input), '}');
@@ -740,12 +772,18 @@ static char *expand_macro(char **input)
         fprintf(stderr, "expand_macro: bad macro.");
         exit(1);
     } else {
-        *end++ = '\0';
-        rval = hash_get(Macros, *input);
+        /* currently, not modifying the input source. */
+
+        strncpy(key, *input, end-*input);
+        key[end-*input] = '\0';
+        rval = hash_get(Macros, key);
+
         if (rval == NULL) {
             fprintf(stderr, "expand_macro: no macro definition for '%s'.", *input);
             exit(1);
         }
+
+        end++;
         *input = end;
         return rval;
     }

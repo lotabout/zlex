@@ -1,5 +1,13 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 18 2015
+The hash table is done, now we would add macro support. The macro
+table is constructed in zlex's lexical analyzer phase. The macro
+support for NFA is expand macro if a macro appers in a rule.
+
+- [ ] macro support functions.
+- [ ] macro support in NFA lexical analyzer: advance().
+
 ### Jan 17 2015
 Now the basic NFA processing routine is done. The next step would be adding
 macro support. Note that the macros are added by zlex in preprocessing phase,
@@ -7,7 +15,7 @@ similar to constructing symbol table in lexical analyzer in normal compilers.
 We will need a new libary: hash tables, if we want to access the macros as
 fast as possible.
 
-- [ ] library: hash table.
+- [X] library: hash table.
 
 Now I am having trouble deciding the APIs for hash table, mainly
 because of two reasons:

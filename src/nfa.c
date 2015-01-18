@@ -5,8 +5,11 @@
 #include <ctype.h>
 #include <assert.h>
 
+
 #include "nfa.h"
 #include "escape.h"
+#include "hash.h"
+
 /*---------------------------------------------------------------------------*/
 /* Debug Macros */
 #ifdef DEBUG
@@ -29,6 +32,7 @@ enum token {
     AT_EOL,      /* $                  */
     CCL_START,   /* [                  */
     CCL_END,     /* ]                  */
+
     PAREN_OPEN,  /* (                  */
     PAREN_CLOSE, /* )                  */
     CURLY_OPEN,  /* {                  */
@@ -49,19 +53,22 @@ static inline bool match(enum token t);
 
 
 /* parser */
-nfa_t *machine();
-nfa_t *rule();
-void expr(nfa_t **start, nfa_t **end);
-void cat_expr(nfa_t **start, nfa_t **end);
-void factor(nfa_t **start, nfa_t **end);
-bool first_in_cat(enum token t);
-void term(nfa_t **start, nfa_t **end);
-void dodash(set_t *set);
+static nfa_t *machine();
+static nfa_t *rule();
+static void expr(nfa_t **start, nfa_t **end);
+static void cat_expr(nfa_t **start, nfa_t **end);
+static void factor(nfa_t **start, nfa_t **end);
+static bool first_in_cat(enum token t);
+static void term(nfa_t **start, nfa_t **end);
+static void dodash(set_t *set);
 
 /* memory management */
 static nfa_t *new_state(void);
 static void discard_state(nfa_t *state);
 static char *save(char *str);
+
+/* macro support */
+static char *expand_macro(char **input);
 
 /*---------------------------------------------------------------------------*/
 /* token map: characters -> tokens
@@ -318,7 +325,7 @@ nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state)
     return rval;
 }
 
-nfa_t *machine()
+static nfa_t *machine()
 {
     ENTER("machine");
     /* machine  ::= ( rule )+ END_OF_INPUT 
@@ -340,7 +347,7 @@ nfa_t *machine()
     return start;
 }
 
-nfa_t *rule(void)
+static nfa_t *rule(void)
 {
     ENTER("rule");
     /* rule     ::=  expr  EOS action
@@ -395,7 +402,7 @@ nfa_t *rule(void)
     return start;
 }
 
-void expr(nfa_t **start, nfa_t **end)
+static void expr(nfa_t **start, nfa_t **end)
 {
     ENTER("expr");
     /* expr     ::= cat_expr ( OR cat_expr )*      ; OR has high precedence
@@ -427,7 +434,7 @@ void expr(nfa_t **start, nfa_t **end)
     LEAVE("expr");
 }
 
-void cat_expr(nfa_t **start, nfa_t **end)
+static void cat_expr(nfa_t **start, nfa_t **end)
 {
     ENTER("cat_expr");
     /* cat_expr ::= (factor)+
@@ -460,7 +467,7 @@ void cat_expr(nfa_t **start, nfa_t **end)
     LEAVE("cat_expr");
 }
 
-bool first_in_cat(enum token t)
+static bool first_in_cat(enum token t)
 {
     /* check if a token is in the FIRST set of cat_expr.
      * i.e. check if token t can be the start token of factor.
@@ -479,7 +486,7 @@ bool first_in_cat(enum token t)
     return false;
 }
 
-void factor(nfa_t **start, nfa_t **end)
+static void factor(nfa_t **start, nfa_t **end)
 {
     ENTER("factor");
     /* factor   ::= term* | term+ | term? | term
@@ -512,7 +519,7 @@ void factor(nfa_t **start, nfa_t **end)
     LEAVE("factor");
 }
 
-void term(nfa_t **start, nfa_t **end)
+static void term(nfa_t **start, nfa_t **end)
 {
     ENTER("term");
     /* term     ::= [string] | [^string] | [] | [^] | . | (expr) | <character>
@@ -582,7 +589,7 @@ void term(nfa_t **start, nfa_t **end)
     LEAVE("term");
 }
 
-void dodash(set_t *set)
+static void dodash(set_t *set)
 {
     /* match the string compnent in [string] or [^string]
      * note that a-z are interpret as abcd...z etc. */
@@ -608,5 +615,151 @@ void dodash(set_t *set)
             set_add(set, first);
         }
         advance();
+    }
+}
+
+/*---------------------------------------------------------------------------*/
+/* Macro support
+ * Note that the memory allocated for macros might not be freed at
+ * all, they're destoryed after the program exit.
+ * This design works because zlex is always one-run for any input. */
+
+static hash_t *Macros; /* symbol table for macro definitions */
+const int MAX_MACRO_NUM = 31;
+
+/* functions needed by hash table, only wrappers. */
+static unsigned hash_str(const void *str)
+{
+    return hash_sdbm((const char *)str);
+}
+
+static int str_cmp(const void *a, const void *b)
+{
+    return strcmp((const void *)a, (const void *)b);
+}
+
+static void destory(void *key, void *val)
+{
+    if (key) {
+        free(key);
+    }
+    if (val) {
+        free(val);
+    }
+}
+
+static void print_a_macro(const void *key, const void *val)
+{
+    printf("%-16s--[%s]--\n", (char *)key, (char *)val);
+}
+
+/* parse a macro definition and add it to the table
+ * If two macros comes in a row, the second one takes precedence.
+ * A macro definition has the following form 
+ *   name <whitespace> definition [<whitespace>]* */
+void new_macro(char *def)
+{
+    static bool first_time = true;
+    if (first_time) {
+        Macros = hash_new(MAX_MACRO_NUM, hash_str, str_cmp);
+        if (Macros == NULL) {
+            fprintf(stderr, "new_macro: not enough memory allocating macro table");
+            exit(1);
+        }
+
+        first_time = false;
+    }
+
+
+    char *name = NULL;
+    /* 1. isolate name with definition */
+    for (name = def; *def && !isspace(def); def++) {
+        /* pass */
+    }
+    if (*def) {
+        *def++ = '\0';
+    }
+
+    int name_len = def - name;
+
+    char *text = NULL;
+    char *edef = NULL; /* end of definition part */
+
+    /* 2. first skip up whitespaces to the definition body */
+    while (isspace(*def)) {
+        def++;
+    }
+
+    text = def;
+
+    /* 3. we should skip the trailing spaces(including newline) */
+    while (*def) {
+        if (!isspace(*def)) {
+            def++;
+        } else {
+            for (edef = def++; isspace(*def); def++) {
+                /* pass */
+            }
+        }
+    }
+
+    if (edef) {
+        if (*(edef-1) == '\\') {
+            /* if the trailing characters are <\ >, we should not remove it */
+            edef++;
+        }
+
+        *edef = '\0';
+        def = edef;
+    }
+
+    int text_len = def - text + 1;
+
+    /* 4. allocating memory for name/definition */
+    char *name_p = (char *)malloc(name_len * sizeof(*name_p));
+    char *text_p = (char *)malloc(text_len * sizeof(*text_p));
+    if (name_p == NULL || text_p == NULL) {
+        fprintf(stderr, "new_macro: not enough memory allocating memory for name and definition");
+        exit(1);
+    }
+
+    strcpy(name_p, name);
+    strcpy(text_p, text);
+    hash_add(Macros, name_p, text_p);
+}
+
+/* scan the input, recogize a macro, expand it and return, modify input
+ * accordingly. macros names are recognized as <{name}>. the input pointer is
+ * moved past the closing '}' */
+static char *expand_macro(char **input)
+{
+    char *end = NULL;
+    char *rval = NULL;
+    end = strchr(++(*input), '}');
+    if (end == NULL) {
+        fprintf(stderr, "expand_macro: bad macro.");
+        exit(1);
+    } else {
+        *end++ = '\0';
+        rval = hash_get(Macros, *input);
+        if (rval == NULL) {
+            fprintf(stderr, "expand_macro: no macro definition for '%s'.", *input);
+            exit(1);
+        }
+        *input = end;
+        return rval;
+    }
+
+    return "ERROR"; /* should not reach here */
+}
+
+/* print all macros to the stdout */
+void printmacs()
+{
+    if (Macros == NULL) {
+        printf("No macros!");
+    } else {
+        printf("Macros:\n");
+        hash_print(Macros, print_a_macro);
     }
 }

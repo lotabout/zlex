@@ -1,12 +1,22 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 19 2015
+Now the construction of NFA works fine. It's time to convert it to DFA. Before
+that I need to check out the book for some theory.
+
+Following the book, we will first implement a machine to interpret NFA
+machines.
+
+- [ ] assign state numbers to NFA states (for simplicity)
+- [ ] interpreting NFA.
+
 ### Jan 18 2015
 The hash table is done, now we would add macro support. The macro
 table is constructed in zlex's lexical analyzer phase. The macro
 support for NFA is expand macro if a macro appers in a rule.
 
-- [ ] macro support functions.
-- [ ] macro support in NFA lexical analyzer: advance().
+- [X] macro support functions.
+- [X] macro support in NFA lexical analyzer: advance().
 
 ### Jan 17 2015
 Now the basic NFA processing routine is done. The next step would be adding

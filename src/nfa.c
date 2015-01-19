@@ -298,6 +298,13 @@ static void discard_state(nfa_t *state)
     PUSH(state);
 }
 
+/* destory all the states in a machine */
+void destory_thompson(void)
+{
+    free(NFA_states);
+    NFA_states = NULL;
+}
+
 /* assign src to dst, dst's resources are freed. */
 static void assign_state(nfa_t **dst, const nfa_t *src)
 {

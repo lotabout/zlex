@@ -40,6 +40,9 @@ extern const int MAX_NFA_STATES;     /* max states in a NFA machine */
 /* construct NFA machine. return the start state. */
 nfa_t *thompson(char *(*input_func)(void));
 
+/* free all the resources allocated by calling thompson() */
+void destory_thompson(void);
+
 
 typedef enum {
     NFA_PLAIN,      /* plain text output */

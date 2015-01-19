@@ -12,6 +12,7 @@ char *macros[] = {
 
 char *rules[] = {
     "{D}+ return ICON;",
+    "^abc return abc",
     "({D}+|{D}*\\.{D}+|{D}+\\.{D}*)(e{D}+)? return FCON",
     NULL
 };

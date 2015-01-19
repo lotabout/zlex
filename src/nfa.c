@@ -65,6 +65,7 @@ static void dodash(set_t *set);
 /* memory management */
 static nfa_t *new_state(void);
 static void discard_state(nfa_t *state);
+static void assign_state(nfa_t **dst, const nfa_t *src);
 static char *save(char *str);
 
 /* macro support */
@@ -224,14 +225,14 @@ static inline bool match(enum token t)
  * strings: routine save() to allocate strings and embed line number in it. */
 
 const int MAX_NFA_STATES = 788;     /* max states in a NFA machine */
-nfa_t *NFA_states; /* pointer to the allocated pool of states */
-int Num_states = 0;     /* number of states in NFA machine */
-int Next_alloc = 0;     /* Index of next elements in the array */
+static nfa_t *NFA_states; /* pointer to the allocated pool of states */
+static int Num_states = 0;     /* number of states in NFA machine */
+static int Next_alloc = 0;     /* Index of next elements in the array */
 
 
 #define SSIZE 32                /* stack size */
-nfa_t *Sstack[SSIZE];           /* stack to save discarded pointer */
-nfa_t **Sp = &Sstack[-1];       /* stack pointer */
+static nfa_t *Sstack[SSIZE];           /* stack to save discarded pointer */
+static nfa_t **Sp = &Sstack[-1];       /* stack pointer */
 
 #define PUSH(x) (*++Sp = (x))   /* push x onto the stack */
 #define POP()   (*Sp--)         /* get x from the top of the stack */
@@ -243,13 +244,20 @@ static nfa_t *new_state(void)
 {
     static bool first_time = true;
     if (first_time) {
+        first_time = false;
         NFA_states = (nfa_t *)calloc(MAX_NFA_STATES, sizeof(*NFA_states));
         if (NFA_states == NULL) {
             fprintf(stderr, "new_state: not enough memroy.\n");
             exit(1);
         }
-        first_time = false;
         Sp = &Sstack[-1];
+
+        /* assign IDs to NFA states, starting from 0. */
+        int i;
+        for (i = 0; i < MAX_NFA_STATES; i++) {
+            NFA_states[i].nfa_id = i;
+        }
+
     }
 
     if (++Num_states >= MAX_NFA_STATES) {
@@ -279,13 +287,27 @@ static void discard_state(nfa_t *state)
         set_del(state->bitset);
         state->bitset = NULL;
     }
+    int id = state->nfa_id;  /* recover ID */
     memset(state, 0, sizeof(*state));
     state->edge = EMPTY;
+    state->nfa_id = id;
     if (STACK_FULL()) {
         fprintf(stderr, "discard_state: stack full, abort.\n");
         exit(1);
     }
     PUSH(state);
+}
+
+/* assign src to dst, dst's resources are freed. */
+static void assign_state(nfa_t **dst, const nfa_t *src)
+{
+    int id = (*dst)->nfa_id;
+    if ((*dst)->bitset != NULL) {
+        set_del((*dst)->bitset);
+    }
+
+    memcpy(*dst, src, sizeof(*src));
+    (*dst)->nfa_id = id;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -335,16 +357,13 @@ static char *save(char *str)
  * Now only stubs.
  * */
 
-nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state)
+nfa_t *thompson(char *(*input_func)(void))
 {
     nfa_t *rval = NULL;
     Input_func = input_func;
     Current_tok = EOS;  /* load the first token */
     advance();
     rval = machine();
-
-    *max_state = Next_alloc;
-
     return rval;
 }
 
@@ -482,9 +501,8 @@ static void cat_expr(nfa_t **start, nfa_t **end)
     while(first_in_cat(Current_tok)) {
         factor(&e2_start, &e2_end);
 
-        memcpy(*end, e2_start, sizeof(*e2_start));
+        assign_state(end, e2_start);
         discard_state(e2_start);
-
         *end = e2_end;
     }
     LEAVE("cat_expr");

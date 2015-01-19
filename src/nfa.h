@@ -27,6 +27,7 @@ typedef struct nfa
     char *accept;   /* action string for accepting state. NULL if not
                        accepting state */
     anchor_t anchor;    /* anchor of regular expression */
+    int nfa_id;     /* ID of nfa state */
 } nfa_t;
 
 #define EPSILON -1
@@ -34,7 +35,10 @@ typedef struct nfa
 #define EMPTY -3
 
 /*---------------------------------------------------------------------------*/
-nfa_t *thompson(char *(*input_func)(void), int *max_state, nfa_t **start_state);
+extern const int MAX_NFA_STATES;     /* max states in a NFA machine */
+
+/* construct NFA machine. return the start state. */
+nfa_t *thompson(char *(*input_func)(void));
 
 
 typedef enum {
@@ -42,7 +46,7 @@ typedef enum {
     NFA_GRAPHVIZ,   /* graphviz output */
 } nfa_print_t;
 
-void print_nfa(nfa_t *nfa, int max_state, nfa_t *start, nfa_print_t type);
+void print_nfa(nfa_t *nfa, nfa_print_t type);
 
 /*---------------------------------------------------------------------------*/
 /* macro support */

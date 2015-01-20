@@ -1,5 +1,26 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 20 2015
+Before implementing the interpretation of NFA, I found some bugs or limitation
+of the design of the textbook.
+
+1. The way '^' anchor is treated by adding a NFA state which accepting a newline
+character before the rule.
+2. The way '$' anchor is treated by adding a NFA state which accepting a newline
+after the rule.
+
+In this case, a pattern with '$' anchor will eat up a newline if it is accepted,
+and thus other patterns with '^' anchor won't be matched if the preceding
+'\n' been eaten. So as the pattern '\n'.
+
+I finally decided to deal with it later or just leave it as it is.
+
+Another bug might be introduced by the state number in NFA: that we will reuse
+NFA states that are discarded while matching a `cat_expr()`. Thus if we want to
+determine the precedence of accepting states, it won't work.
+
+TODO: re-assign state number to NFA machine.
+
 ### Jan 19 2015
 Now the construction of NFA works fine. It's time to convert it to DFA. Before
 that I need to check out the book for some theory.

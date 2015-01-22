@@ -364,14 +364,16 @@ static char *save(char *str)
  * Now only stubs.
  * */
 
-nfa_t *thompson(char *(*input_func)(void))
+/* construct NFA machine. return the state array. */
+nfa_t *thompson(char *(*input_func)(void), nfa_t **start, int *max_state)
 {
     nfa_t *rval = NULL;
     Input_func = input_func;
     Current_tok = EOS;  /* load the first token */
     advance();
-    rval = machine();
-    return rval;
+    *max_state = Next_alloc;
+    *start = machine();
+    return NFA_states;
 }
 
 static nfa_t *machine()

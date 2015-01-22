@@ -1,5 +1,12 @@
 This file will serve as the record of the developing process. And design docs.
 
+### Jan 22 2015
+To deal with the state number problem, I made the following choice:
+1. Follow the book, `thompson()` return the array of states instead of only
+   returning the start number
+2. Change the way NFA rules are parsed, so that the `discard()` will not be
+   needed, thus to fix the state number bug.
+
 ### Jan 20 2015
 Before implementing the interpretation of NFA, I found some bugs or limitation
 of the design of the textbook.

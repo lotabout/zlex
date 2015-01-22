@@ -35,7 +35,9 @@ int main(int argc, char *argv[])
         p++;
     }
 
-    nfa_t *start = thompson(get_expr);
+    nfa_t *start = NULL;
+    int max_state = 0;
+    nfa_t *array = thompson(get_expr, &start, &max_state);
     print_nfa(start, NFA_GRAPHVIZ);
     /* print_nfa(start, NFA_PLAIN); */
 

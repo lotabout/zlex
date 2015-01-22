@@ -37,8 +37,8 @@ typedef struct nfa
 /*---------------------------------------------------------------------------*/
 extern const int MAX_NFA_STATES;     /* max states in a NFA machine */
 
-/* construct NFA machine. return the start state. */
-nfa_t *thompson(char *(*input_func)(void));
+/* construct NFA machine. return the state array. */
+nfa_t *thompson(char *(*input_func)(void), nfa_t **start, int *max_state);
 
 /* free all the resources allocated by calling thompson() */
 void destory_thompson(void);

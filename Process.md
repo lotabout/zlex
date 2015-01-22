@@ -7,6 +7,14 @@ To deal with the state number problem, I made the following choice:
 2. Change the way NFA rules are parsed, so that the `discard()` will not be
    needed, thus to fix the state number bug.
 
+So, this is what I've done:
+- [X] change thompson implementation to return the NFA states array.
+- [X] change the behavior of `cat_expr()`, so it won't discard states anymore.
+
+Note that in this case we'll use more states if concatenating in regular
+expressions is much. However, we can change the behavior of `OR` to reduce the
+creation of new states. NOT doing this for now.
+
 ### Jan 20 2015
 Before implementing the interpretation of NFA, I found some bugs or limitation
 of the design of the textbook.

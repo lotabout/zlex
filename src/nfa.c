@@ -495,6 +495,7 @@ static void cat_expr(nfa_t **start, nfa_t **end)
      * o --> o --> o
      *
      * i.e. discard e2_start while concatenating.
+     * ==> now we don't try to discard here.
      * must have at least one factor.
      */
     nfa_t *e2_start = NULL;
@@ -510,8 +511,9 @@ static void cat_expr(nfa_t **start, nfa_t **end)
     while(first_in_cat(Current_tok)) {
         factor(&e2_start, &e2_end);
 
-        assign_state(end, e2_start);
-        discard_state(e2_start);
+        /* assign_state(end, e2_start); */
+        /* discard_state(e2_start); */
+        (*end)->next1 = e2_start; /* we don't try to save memory here. */
         *end = e2_end;
     }
     LEAVE("cat_expr");

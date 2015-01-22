@@ -15,6 +15,9 @@ Note that in this case we'll use more states if concatenating in regular
 expressions is much. However, we can change the behavior of `OR` to reduce the
 creation of new states. NOT doing this for now.
 
+Next: trying to covert NFA machine to DFA machine.
+- [ ] convert NFA machine to DFA machine.
+
 ### Jan 20 2015
 Before implementing the interpretation of NFA, I found some bugs or limitation
 of the design of the textbook.
@@ -43,8 +46,8 @@ that I need to check out the book for some theory.
 Following the book, we will first implement a machine to interpret NFA
 machines.
 
-- [ ] assign state numbers to NFA states (for simplicity)
-- [ ] interpreting NFA.
+- [X] assign state numbers to NFA states (for simplicity)
+- [X] interpreting NFA.
 
 ### Jan 18 2015
 The hash table is done, now we would add macro support. The macro

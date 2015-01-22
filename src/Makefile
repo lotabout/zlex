@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall
 
 
-COMPONENTS = escape nfa set printnfa hash terp
+COMPONENTS = escape nfa set printnfa hash terp dfa
 LIBS = ${patsubst %,%.o,${COMPONENTS}}
 TESTS = ${patsubst %.c,%,$(wildcard test*.c)}
 

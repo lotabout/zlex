@@ -35,7 +35,8 @@ typedef struct nfa
 #define EMPTY -3
 
 /*---------------------------------------------------------------------------*/
-extern const int MAX_NFA_STATES;     /* max states in a NFA machine */
+/* extern const int MAX_NFA_STATES;     /\* max states in a NFA machine *\/ */
+#define MAX_NFA_STATES 788     /* max states in a NFA machine */
 
 /* construct NFA machine. return the state array. */
 nfa_t *thompson(char *(*input_func)(void), nfa_t **start, int *max_state);

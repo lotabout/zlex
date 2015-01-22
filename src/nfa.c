@@ -224,7 +224,6 @@ static inline bool match(enum token t)
  * states: allocate a large pool and manage allocations and destruction
  * strings: routine save() to allocate strings and embed line number in it. */
 
-const int MAX_NFA_STATES = 788;     /* max states in a NFA machine */
 static nfa_t *NFA_states; /* pointer to the allocated pool of states */
 static int Num_states = 0;     /* number of states in NFA machine */
 static int Next_alloc = 0;     /* Index of next elements in the array */

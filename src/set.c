@@ -128,6 +128,7 @@ static bool set_op(set_t *dst, set_t *src, char op)
  * SET_DISJOINT if no common element */
 static bool set_test(set_t *dst, set_t *src)
 {
+    assert(dst != NULL && src != NULL);
     if (src->nwords > dst->nwords) {
         /* make sure that len(s) <= len(dst) */
         set_t *tmp = src;
@@ -186,6 +187,7 @@ set_t *set_new(void)
  * deleted */
 void set_del(set_t *old_set)
 {
+    assert(old_set != NULL);
     if (old_set->map != old_set->defmap) {
         free(old_set->map);
     }
@@ -196,6 +198,7 @@ void set_del(set_t *old_set)
 /* duplicate a set */
 set_t *set_dup(set_t *old_set)
 {
+    assert(old_set != NULL);
     set_t *new_set = (set_t *)malloc(sizeof(*new_set));
     if (new_set == NULL) {
         fprintf(stderr, "set_dup: not enough memory allocating set object\n");
@@ -259,6 +262,7 @@ bool set_remove_members(set_t *set, int member, ...)
 /* return the number of elements in a set */
 int set_elements(set_t *set)
 {
+    assert(set != NULL);
     int i;
     int elements = 0;
     for (i = 0; i < set->nwords; ++i) {
